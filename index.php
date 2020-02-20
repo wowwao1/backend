@@ -1,0 +1,795 @@
+<?php
+Header('Content-Type: application/json; charset=UTF8');
+/*error_reporting(E_ALL);
+ini_set('display_errors', '1'); */
+require_once "../includes-nct/config-nct.php";
+require_once "constant.webservice-nct.php";
+require_once "function.webservice-nct.php";
+require_once "class.webservice-nct.php";
+require_once "AppChatKit.php";
+
+require DIR_INC . 'Twilio/autoload.php';
+// Use the REST API Client to make requests to the Twilio REST API
+use Twilio\Rest\Client;
+$sid = TWILIO_SID;
+$token = TWILIO_TOKEN;
+$client = new Client($sid, $token);
+
+if(isset($_POST['action']) && $_POST['action'] != '')
+{	
+	extract($_POST);
+	$objWebservice = new WebService($client, $mysqli_con);
+	if($action == 'signup')
+	{
+		if(ChkVar($phonecode) && ChkVar($firstname) /* && ChkVar($lastname)*/ && ChkVar($email) && ChkVar($phonenumber) && ChkVar($password, 'n') /*&& ChkVar($device_token)*/ && ChkVar($device) && ($device == 'Android' || $device == 'iOS'))
+		{
+			$objWebservice->userSignUp($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+
+			
+		}
+	}
+	else if($action == 'verifyEmailResend')
+	{
+		if(ChkVar($user_id) && ChkVar($email))
+		{
+			$objWebservice->userVerifyEmailResend($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'phoneVerification')
+	{
+		//if(ChkVar($user_id) && ChkVar($phone_no) && ChkVar($verify_action) && ($verify_action == 'Add' || $verify_action == 'Edit'))
+		if(ChkVar($phone_no) && ChkVar($verify_action) && ($verify_action == 'Add' || $verify_action == 'Edit'))
+		{
+			$objWebservice->phoneVerification($_POST);
+			exit;
+		}
+		else if(ChkVar($user_id) && ChkVar($phone_code) && ChkVar($phone_no) && ChkVar($verify_action) && $verify_action == 'Update')
+		{
+			$objWebservice->updatePhoneVerification($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'login')
+	{
+		if(ChkVar($email) && ChkVar($password, 'n') /*&& ChkVar($device_token)*/ && ChkVar($device) && ($device == 'Android' || $device == 'iOS'))
+		{
+			$objWebservice->userLogin($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'getCountryCode')
+	{
+		
+		$objWebservice->getCountryCode();
+		exit;
+	}
+	else if($action == 'getCountry')
+	{
+		
+		$objWebservice->getCountry();
+		exit;
+	}
+	else if($action == 'getState')
+	{
+		if(ChkVar($CountryID))
+		{
+			$objWebservice->getState($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'getCity')
+	{
+		if(ChkVar($StateID))
+		{
+			$objWebservice->getCity($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'addPost')
+	{
+		$POST_Array = isset($_POST) && !empty($_POST) ? $_POST : array() ;
+		$FILES_Array = isset($_FILES) && !empty($_FILES) ? $_FILES : array() ;
+		if(ChkVar($user_id) && ChkVar($post_type) && ($post_type == 'Private' || $post_type == 'Public') && (ChkVar($post_text) || !empty($FILES_Array)))
+		{
+			$objWebservice->userAddPost($POST_Array, $FILES_Array);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'addComment')
+	{
+		if(ChkVar($user_id) && ChkVar($post_id) && ChkVar($post_user_id) && ChkVar($cmnt_text) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->userAddComment($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'addReply')
+	{
+		if(ChkVar($user_id) && ChkVar($post_id) && ChkVar($post_user_id) && ChkVar($cmnt_user_id) && ChkVar($cmnt_id) && ChkVar($reply_text) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->userAddReply($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'deletePost')
+	{
+		if(ChkVar($post_id))
+		{
+			$objWebservice->userDeletePost($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'deleteComment')
+	{
+		if(ChkVar($cmnt_id))
+		{
+			$objWebservice->userDeleteComment($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'deleteReply')
+	{
+		if(ChkVar($reply_id))
+		{
+			$objWebservice->userDeleteSubcomment($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userFollowPost')
+	{
+		if(ChkVar($user_id) && ChkVar($page) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->userFollowPost($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userFriendPost')
+	{
+		if(ChkVar($user_id) && ChkVar($page) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->userFriendPost($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userNearByPost')
+	{
+		if(ChkVar($user_id) && ChkVar($page) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->userNearByPost($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userLikePost')
+	{
+		if(ChkVar($user_id) && ChkVar($post_id) && ChkVar($like_action) && ($like_action == 'Like' || $like_action == 'Unlike'))
+		{
+			$objWebservice->userLikePost($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userRequest')
+	{
+		if(ChkVar($sender_id) && ChkVar($receiver_id) && ChkVar($request_action) && ($request_action == 'Add' || $request_action == 'Remove' || $request_action == 'Accept' || $request_action == 'Reject' || $request_action == 'Unfriend'))
+		{
+			$objWebservice->userRequest($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userFriendRequestList')
+	{
+		if(ChkVar($user_id) && ChkVar($page))
+		{
+			$objWebservice->userFriendRequestList($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userFriendList')
+	{
+		if(ChkVar($user_id) && ChkVar($page))
+		{
+			$objWebservice->userFriendList($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userCommentList')
+	{
+		if(ChkVar($user_id) && ChkVar($post_id) && ChkVar($page) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->userCommentList($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userReplyList')
+	{
+		if(ChkVar($user_id) && ChkVar($cmnt_id) && ChkVar($page) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->userReplyList($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'search')
+	{
+		if(ChkVar($user_id) && (ChkVar($keyword) || (ChkVar($lat) && ChkVar($long))) && ChkVar($search_type) && $search_type == 'user' && ChkVar($page))
+		{
+			$objWebservice->userSearch($_POST);
+			exit;
+		}
+		else if(ChkVar($user_id) && (ChkVar($keyword) || (ChkVar($lat) && ChkVar($long))) && ChkVar($search_type) && $search_type == 'post' && ChkVar($page) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->postSearch($_POST);
+			exit;
+		}
+		else if(ChkVar($user_id) && (ChkVar($keyword) || (ChkVar($lat) && ChkVar($long))) && ChkVar($search_type) && $search_type == 'both' && ChkVar($page) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->bothSearch($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userBlockList')
+	{
+		if(ChkVar($user_id) && ChkVar($page))
+		{
+			$objWebservice->userBlockList($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userBlock')
+	{
+		if(ChkVar($sender_id) && ChkVar($receiver_id) && ChkVar($block_action) && ($block_action == 'Block' || $block_action == 'Unblock'))
+		{
+			$objWebservice->userBlock($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userFollowList')
+	{
+		if(ChkVar($user_id) && ChkVar($page))
+		{
+			$objWebservice->userFollowList($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userFollow')
+	{
+		if(ChkVar($sender_id) && ChkVar($receiver_id) && ChkVar($follow_action) && ($follow_action == 'Follow' || $follow_action == 'Unfollow'))
+		{
+			$objWebservice->userFollow($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userPost')
+	{
+		if(ChkVar($sender_id) && ChkVar($receiver_id) && ChkVar($page) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->userPost($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userSharePost')
+	{
+		if(ChkVar($user_id) && ChkVar($post_id) && ChkVar($post_type) && ($post_type == 'Private' || $post_type == 'Public'))
+		{
+			$objWebservice->userSharePost($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userProfile')
+	{
+		if(ChkVar($sender_id) && ChkVar($receiver_id))
+		{
+			$objWebservice->userProfile($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userSendMessage')
+	{
+		$POST_Array = isset($_POST) && !empty($_POST) ? $_POST : array() ;
+		$FILES_Array = isset($_FILES) && !empty($_FILES) ? $_FILES : array() ;
+		if(ChkVar($sender_id) && ChkVar($receiver_id) && (ChkVar($message) || !empty($FILES_Array)) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->userSendMessage($POST_Array, $FILES_Array);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userConversation')
+	{
+		if(ChkVar($user_id) && ChkVar($page) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->userConversation($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userComposeSearch')
+	{
+		if(ChkVar($user_id) && ChkVar($keyword) && ChkVar($page))
+		{
+			// $objWebservice->userSearch($_POST, 'msg');
+			$objWebservice->userComposeSearch($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userMessageList')
+	{
+		if(ChkVar($sender_id) && ChkVar($receiver_id) && ChkVar($page) && ChkVar($timezone) && TZ($timezone))
+		{
+			$objWebservice->userMessageList($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userMessageDelete')
+	{
+		if(ChkVar($sender_id) && ChkVar($receiver_id))
+		{
+			$objWebservice->userMessageDelete($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userEditProfile')
+	{
+		// if(ChkVar($user_id) && ChkVar($first_name) && ChkVar($city) && ChkVar($state) && ChkVar($country) && ChkVar($city_lat) && ChkVar($city_long) &&  chkVar($phone_code) && chkVar($phone_no) && chkVar($gender))
+
+		if(ChkVar($user_id) && ChkVar($first_name) && ChkVar($about) && ChkVar($email) && ChkVar($country) && ChkVar($state) && ChkVar($city)
+		&& ChkVar($city_lat) && ChkVar($city_long) )
+		{
+			$objWebservice->userEditProfile($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userEditPicture')
+	{
+		if(ChkVar($user_id) && ChkVar($picture_type) && ($picture_type == 'Profile' || $picture_type == 'Cover'))
+		{
+			$POST_Array = isset($_POST) && !empty($_POST) ? $_POST : array() ;
+			$FILES_Array = isset($_FILES) && !empty($_FILES) ? $_FILES : array() ;
+			$objWebservice->userEditPicture($POST_Array, $FILES_Array);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'editPost')
+	{
+		$POST_Array = isset($_POST) && !empty($_POST) ? $_POST : array() ;
+		$FILES_Array = isset($_FILES) && !empty($_FILES) ? $_FILES : array() ;
+		if(ChkVar($user_id) && ChkVar($post_id) && ChkVar($post_type) && ($post_type == 'Private' || $post_type == 'Public') && (ChkVar($post_text) || !empty($FILES_Array)))
+		{
+			$objWebservice->usereditPost($POST_Array, $FILES_Array);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userDeletePostImage')
+	{
+		if(ChkVar($img_id))
+		{
+			$objWebservice->userDeletePostImage($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userNotificationList')
+	{
+		if(ChkVar($user_id) && ChkVar($page))
+		{
+			$objWebservice->userNotificationList($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userNotificationSettings')
+	{
+		if(ChkVar($user_id) && ChkVar($post_cmnt) && ChkVar($post_like) && ChkVar($req_rece) && ChkVar($req_acpt) && ChkVar($user_follow) && ChkVar($user_msg))
+		{
+			$objWebservice->userNotificationSettings($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userChangePassword')
+	{
+		if(ChkVar($user_id) && ChkVar($old_password, 'n') && ChkVar($new_password, 'n'))
+		{
+			$objWebservice->userChangePassword($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userReportPost')
+	{
+		if(ChkVar($user_id) && ChkVar($post_id) && ChkVar($post_user_id))
+		{
+			$objWebservice->userReportPost($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userContactUs')
+	{
+		if(ChkVar($firstname) && ChkVar($lastname) && ChkVar($email) && ChkVar($subject) && ChkVar($message))
+		{
+			$objWebservice->userContactUs($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userForgotPassword')
+	{
+		if(ChkVar($email))
+		{
+			$objWebservice->userForgotPassword($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userDeactive')
+	{
+		if(ChkVar($user_id) && ChkVar($password))
+		{
+			$objWebservice->userDeactive($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userGetNotificationSettings')
+	{
+		if(ChkVar($user_id))
+		{
+			$objWebservice->userGetNotificationSettings($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userLogout')
+	{
+		if(ChkVar($user_id))
+		{
+			$objWebservice->userLogout($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'editSharedPost')
+	{
+		if(ChkVar($user_id) && ChkVar($post_id) && ChkVar($post_type) && ($post_type == 'Private' || $post_type == 'Public'))
+		{
+			$objWebservice->editSharedPost($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'userUpdatesCount')
+	{
+		if(ChkVar($user_id))
+		{
+			$objWebservice->userUpdatesCount($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'getAdvertisement')
+	{
+		if(ChkVar($ad_id))
+		{
+			
+			$objWebservice->getAdvertisement($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'advertisementClick')
+	{
+		if(ChkVar($ad_id))
+		{
+			$objWebservice->advertisementClick($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'getStaticPagesList')
+	{
+		$objWebservice->getStaticPagesList();
+		exit;
+	}
+	else if($action == 'getSingleStaticPage')
+	{
+		if(ChkVar($st_id))
+		{
+			$objWebservice->getSingleStaticPage($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'getLatLong') {
+
+		if(ChkVar($user_id) && ChkVar($lat) && ChkVar($lng))
+		{
+			$objWebservice->updateLocation($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'updateFCM') {
+
+		if(ChkVar($user_id) && ChkVar($token))
+		{
+			$objWebservice->updateFCM($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'sendNotification') {
+
+		if(ChkVar($user_id) && ChkVar($friend_id)  && ChkVar($friend_token) 
+		&& ChkVar($user_name) && ChkVar($notification_action) || chkVar($post_id))
+		{
+			if($user_id != $friend_id) {
+				$objWebservice->sendNotification($_POST);
+				exit;
+			}
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'createAppChatKitUser') {
+
+		if(ChkVar($user_id) && ChkVar($name)  && ChkVar($avatar_url))
+		{
+				$chatKit = new AppChatKit();
+				$chatKit->createUser($_POST);
+				exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'getRooms') {
+
+		$chatKit = new AppChatKit();
+		$chatKit->getRooms();
+		exit;
+	}
+	else if($action == 'createRoom') {
+
+		if(ChkVar($creator_id) && ChkVar($name) && ChkVar($user_ids))
+		{
+				$chatKit = new AppChatKit();
+				$chatKit->createRoom($_POST);
+				exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else if($action == 'getPost') {
+
+		if(ChkVar($post_id) && ChkVar($user_id)) {
+			$objWebservice->getPost($_POST);
+			exit;
+		}
+		else
+		{
+			APIerror(BLANK_INPUT);
+		}
+		exit;
+	}
+	else if($action == 'setAvailability') {
+		if(ChkVar($user_id) && ChkVar($isOnline)) {
+			$objWebservice->setAvailability($_POST);
+			exit;
+		} else {
+			APIerror(BLANK_INPUT);
+		}
+	}
+	else
+	{
+		APIerror(NO_VALID_ACTION);
+	}
+}
+else
+{
+	APIerror(NO_ACTION);
+}
+
+?>
